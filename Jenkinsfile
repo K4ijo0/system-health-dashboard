@@ -18,9 +18,9 @@ pipeline {
             }
         }
 
-        stage('Install') {
+       stage('Install') {
             steps {
-                bat 'python -m venv .venv'
+                bat '"C:/Users/Fahad/AppData/Local/Programs/Python/Python313/python.exe" -m venv .venv'
                 bat '.venv/Scripts/python.exe -m pip install -r requirements.txt'
             }
         }
