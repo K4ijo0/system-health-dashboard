@@ -21,13 +21,13 @@ pipeline {
        stage('Install') {
             steps {
                 bat '"C:/Users/Fahad/AppData/Local/Programs/Python/Python313/python.exe" -m venv .venv'
-                bat '.venv/Scripts/python.exe -m pip install -r requirements.txt'
+                bat '.\\.venv\\Scripts\\python.exe -m pip install -r requirements.txt'
             }
         }
 
         stage('Test') {
             steps {
-                bat '.venv/Scripts/python.exe -m pytest -q'
+                bat '.\\.venv\\Scripts\\python.exe -m pytest -q'
             }
         }
 
