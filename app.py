@@ -9,7 +9,9 @@ import os
 app = Flask(__name__)
 
 # Store the current version of the application
-APP_VERSION = "1.0.3"
+
+APP_VERSION = "1.0.1"
+
 
 # Health endpoint
 # Used to check whether the application is running successfully
