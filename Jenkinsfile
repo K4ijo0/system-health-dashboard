@@ -33,7 +33,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                bat 'set DOCKER_BUILDKIT=1 && docker build -t %IMAGE_NAME%:build-%BUILD_NUMBER% .'
+                bat 'set "DOCKER_BUILDKIT=1" && docker build -t %IMAGE_NAME%:build-%BUILD_NUMBER% .'
             }
         }
 
