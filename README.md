@@ -42,7 +42,7 @@ Set the environment name and start the application:
 
 ~~~powershell
 $env:ENVIRONMENT = "development"
-python app.py
+py app.py
 ~~~
 
 The API runs on port `5000`.
