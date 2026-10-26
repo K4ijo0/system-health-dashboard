@@ -40,7 +40,7 @@ def echo():
 # Reads the environment name from an environment variable
 @app.route("/environment", methods=["GET"])
 def environment():
-     # Read the ENVIRONMENT variable
+    # Read the ENVIRONMENT variable
     # If it has not been set, use "development" as the defau
     environment_name = os.getenv("ENVIRONMENT", "development")
     
@@ -51,5 +51,4 @@ def environment():
 if __name__ == "__main__":
     # Run the application on port 5000
     # 0.0.0.0 allows the application to be accessed outside the local process,
-    # which will also be useful later when we run it inside Docker
     app.run(host="0.0.0.0", port=5000)
