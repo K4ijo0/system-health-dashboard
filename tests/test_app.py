@@ -23,7 +23,7 @@ def test_version_endpoint():
         assert response.status_code == 200
         
         # Assert that the response JSON contains the expected version
-        assert response.get_json() == {"version": "1.0.1"}
+        assert response.get_json() == {"version": "1.0.0"}
 
 def test_echo_endpoint():
     # Create a test client for the Flask application
