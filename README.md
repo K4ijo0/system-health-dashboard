@@ -17,9 +17,8 @@ A small Flask API that exposes application health, version, and environment info
 | `GET` | `/health` | Confirms that the application is running | `{"status":"UP"}` |
 | `GET` | `/version` | Returns the application version | `{"version":"1.0.1"}` |
 | `GET` | `/environment` | Returns the configured environment | `{"environment":"development"}` |
-| `POST` | `/echo` | Returns a submitted JSON payload | `{"echo":{"message":"Hello"}}` |
-
-The three required dashboard endpoints are `/health`, `/version`, and `/environment`. The `/echo` endpoint is an additional example of a `POST` endpoint.
+| `GET` | `/metrics` | Returns Prometheus metrics | Prometheus text format |
+| `GET` | `/simulate-error` | Generates a controlled HTTP 500 when enabled | `{"error":"Simulated fault"}` |
 
 ## Prerequisites
 
@@ -55,7 +54,7 @@ Run the complete test suite with one command:
 py -m pytest -q
 ~~~
 
-The tests cover the health, version, echo, and environment endpoints.
+The tests cover the health, version, environment, metrics, and fault-injection endpoints.
 
 ## Verify the local API
 
