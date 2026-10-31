@@ -193,6 +193,49 @@ flowchart TB
 
 Prometheus collects application metrics, Promtail collects Docker logs, Loki stores those logs, and Grafana displays the metrics and logs.
 
+## Start the monitoring stack
+
+Task 3 uses Docker Compose to run staging, production, Prometheus, Grafana, Loki, and Promtail on the shared `system-health-network` network. Docker Desktop must be running first.
+
+Copy the example environment file and set a private Grafana password:
+
+~~~powershell
+Copy-Item .env.example .env
+notepad .env
+~~~
+
+Start the monitoring services first. This creates the shared Docker network:
+
+~~~powershell
+docker compose --env-file .env -f monitoring/docker-compose.monitoring.yml up -d
+~~~
+
+Start the two application environments:
+
+~~~powershell
+docker compose -f docker-compose.staging.yml up -d --build
+docker compose -f docker-compose.production.yml up -d --build
+~~~
+
+Verify the applications and metrics endpoints:
+
+~~~powershell
+Invoke-RestMethod http://localhost:5001/health
+Invoke-RestMethod http://localhost:5001/metrics
+Invoke-RestMethod http://localhost:5002/health
+Invoke-RestMethod http://localhost:5002/metrics
+~~~
+
+Then open:
+
+- Prometheus targets: `http://localhost:9090/targets`
+- Grafana: `http://localhost:3000`
+- Loki: `http://localhost:3100/ready`
+
+Prometheus should show `app-staging:5000` and `app-production:5000` as `UP`. Grafana's Prometheus and Loki data sources are provisioned automatically from files in `monitoring/grafana/provisioning`.
+
+The staff-provided Jenkins, Grafana, and Prometheus URLs are shared lab services. They are not hard-coded into this repository because the project configuration must be reproducible and uses Docker service names. Use those shared URLs for hosted deployment and evidence after Jenkins deploys this project or your facilitator adds these application targets to the shared Prometheus instance.
+
 ### Jenkins job setup
 
 1. Create a Jenkins Pipeline job.

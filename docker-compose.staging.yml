@@ -1,0 +1,23 @@
+services:
+  app-staging:
+    build:
+      context: .
+    image: ${APP_IMAGE:-system-health-dashboard:local}
+    container_name: app-staging
+    environment:
+      ENVIRONMENT: staging
+      ENABLE_FAULT_INJECTION: ${ENABLE_FAULT_INJECTION:-false}
+    ports:
+      - "5001:5000"
+    labels:
+      environment: staging
+      app: system-health-dashboard
+    networks:
+      monitoring:
+        aliases:
+          - app-staging
+
+networks:
+  monitoring:
+    external: true
+    name: system-health-network

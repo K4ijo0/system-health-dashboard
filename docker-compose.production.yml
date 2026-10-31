@@ -1,0 +1,23 @@
+services:
+  app-production:
+    build:
+      context: .
+    image: ${APP_IMAGE:-system-health-dashboard:local}
+    container_name: app-production
+    environment:
+      ENVIRONMENT: production
+      ENABLE_FAULT_INJECTION: "false"
+    ports:
+      - "5002:5000"
+    labels:
+      environment: production
+      app: system-health-dashboard
+    networks:
+      monitoring:
+        aliases:
+          - app-production
+
+networks:
+  monitoring:
+    external: true
+    name: system-health-network
