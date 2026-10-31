@@ -141,6 +141,59 @@ http://localhost:5001/health
 
 The pipeline removes the temporary Jenkins container after every run.
 
+## Mini Project 2 plan
+
+The second project extends this application with Continuous Delivery and monitoring. The planned work is:
+
+- [ ] Add Prometheus metrics, structured JSON logging, and guarded fault injection.
+- [ ] Build the Prometheus, Grafana, Loki, and Promtail monitoring stack.
+- [ ] Create a provisioned Grafana dashboard for metrics and logs.
+- [ ] Define service-down and high-error-rate alert rules.
+- [ ] Extend Jenkins to deploy to staging, require production approval, run smoke tests, and roll back on failure.
+- [ ] Complete an incident drill and record the evidence in `INCIDENT.md`.
+- [ ] Complete the README, screenshots, and individual reflection.
+
+### Mini Project 2 architecture
+
+```mermaid
+flowchart TB
+
+    subgraph DELIVERY["Continuous Delivery"]
+        direction LR
+
+        GIT["Git Repository"]
+        JENKINS["Jenkins Pipeline"]
+        STAGING["Staging API<br/>Port 5001"]
+        APPROVAL{"Manual Approval"}
+        PRODUCTION["Production API<br/>Port 5002"]
+
+        GIT -->|Commit or pull request| JENKINS
+        JENKINS -->|Build, test and deploy| STAGING
+        STAGING -->|Smoke tests pass| APPROVAL
+        APPROVAL -->|Deploy same image| PRODUCTION
+    end
+
+    subgraph MONITORING["Monitoring Stack"]
+        direction LR
+
+        PROMETHEUS["Prometheus"]
+        PROMTAIL["Promtail"]
+        LOKI["Loki"]
+        GRAFANA["Grafana"]
+
+        PROMETHEUS -->|Metrics| GRAFANA
+        LOKI -->|Logs| GRAFANA
+    end
+
+    STAGING -.->|/metrics| PROMETHEUS
+    PRODUCTION -.->|/metrics| PROMETHEUS
+    STAGING -.->|Docker stdout logs| PROMTAIL
+    PRODUCTION -.->|Docker stdout logs| PROMTAIL
+    PROMTAIL -->|Labelled logs| LOKI
+```
+
+Prometheus collects application metrics, Promtail collects Docker logs, Loki stores those logs, and Grafana displays the metrics and logs.
+
 ### Jenkins job setup
 
 1. Create a Jenkins Pipeline job.
@@ -182,6 +235,5 @@ git push -u origin feature/my-change
 ~~~
 
 Open a pull request from the feature branch into `develop`. After integration and review, open the final pull request from `develop` into `main`.
-
 
 
