@@ -1,23 +1,25 @@
+# Production application environment. This deliberately uses the same shared
+# network as staging so Prometheus can scrape both environments consistently.
 services:
   app-production:
     build:
-      context: .
+      context: . # Build the application image from the repository root.
     image: ${APP_IMAGE:-system-health-dashboard:local}
-    container_name: app-production
+    container_name: app-production # Stable name used by monitoring discovery.
     environment:
-      ENVIRONMENT: production
-      ENABLE_FAULT_INJECTION: "false"
+      ENVIRONMENT: production # Exposed by /environment and included in logs.
+      ENABLE_FAULT_INJECTION: "false" # Fault injection is never enabled here.
     ports:
-      - "5002:5000"
+      - "5002:5000" # Host port 5002 -> application port 5000.
     labels:
-      environment: production
+      environment: production # Promtail copies this into the log labels.
       app: system-health-dashboard
     networks:
       monitoring:
         aliases:
-          - app-production
+          - app-production # Prometheus resolves this name on the shared network.
 
 networks:
   monitoring:
-    external: true
+    external: true # Created by the monitoring Compose project.
     name: system-health-network

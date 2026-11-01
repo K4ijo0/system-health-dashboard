@@ -1,74 +1,77 @@
+# Shared observability stack for both application environments.
+# Start this file first: it creates system-health-network for staging/production.
 services:
   prometheus:
-    image: prom/prometheus:v2.53.0
+    image: prom/prometheus:v2.53.0 # Metrics collection and alert evaluation.
     container_name: prometheus
     command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
+      - "--config.file=/etc/prometheus/prometheus.yml" # Use the repo config.
+      - "--storage.tsdb.path=/prometheus" # Store the TSDB in the named volume.
     ports:
-      - "9090:9090"
+      - "9090:9090" # Prometheus UI/API on the host.
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro # Config.
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro # Alert rules.
+      - prometheus_data:/prometheus # Persist metrics across container recreation.
     networks:
       - monitoring
     restart: unless-stopped
 
   loki:
-    image: grafana/loki:3.1.0
+    image: grafana/loki:3.1.0 # Log storage and query API.
     container_name: loki
     command: -config.file=/etc/loki/loki-config.yml
     ports:
-      - "3100:3100"
+      - "3100:3100" # Loki readiness endpoint/API on the host.
     volumes:
       - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
-      - loki_data:/loki
+      - loki_data:/loki # Persist indexed log data.
     networks:
       - monitoring
     restart: unless-stopped
 
   promtail:
-    image: grafana/promtail:3.1.0
+    image: grafana/promtail:3.1.0 # Reads Docker logs and sends them to Loki.
     container_name: promtail
     command: -config.file=/etc/promtail/promtail-config.yml
     volumes:
       - ./promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
-      - promtail_positions:/tmp
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - promtail_positions:/tmp # Remember the last-read position per log file.
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Discover containers/labels.
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro # Read log files.
     networks:
       - monitoring
     depends_on:
-      - loki
+      - loki # Start Loki before Promtail attempts to send logs.
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:11.1.0
+    image: grafana/grafana:11.1.0 # Dashboard UI for metrics and logs.
     container_name: grafana
     environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin} # Default username.
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env} # Required secret.
     ports:
-      - "3000:3000"
+      - "3000:3000" # Grafana UI on the host.
     volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
-      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana # Persist dashboards and Grafana state.
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro # Data sources.
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro # Dashboard provider.
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro # Dashboard JSON files.
     networks:
       - monitoring
     depends_on:
-      - prometheus
+      - prometheus # Data source must be available when Grafana starts.
       - loki
     restart: unless-stopped
 
 volumes:
-  prometheus_data:
-  loki_data:
-  promtail_positions:
-  grafana_data:
+  prometheus_data: # Prometheus time-series database.
+  loki_data: # Loki chunks and index.
+  promtail_positions: # Promtail file offsets.
+  grafana_data: # Grafana users, settings, and state.
 
 networks:
   monitoring:
-    name: system-health-network
+    name: system-health-network # Shared with staging and production apps.
     driver: bridge

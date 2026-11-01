@@ -122,14 +122,22 @@ The `Jenkinsfile` defines a Windows Jenkins pipeline with these stages:
 | Install | Creates a virtual environment and installs `requirements.txt` |
 | Test | Runs the complete pytest suite |
 | Build | Builds a Docker image tagged with the Jenkins build number |
-| Tag | Creates a shorter build-number image tag |
-| Health check | Starts the image and verifies `/health` on port `5001` |
+| Tag | Creates the immutable release image tag used by both environments |
+| Local health check | Starts the release image and verifies `/health` on port `5001` |
+| Prepare deployment network | Ensures the shared Docker network exists on the Jenkins agent |
+| Deploy staging | Deploys the release image with the staging Compose file |
+| Staging smoke tests | Verifies `/health` and `/metrics` on port `5001` |
+| Production approval | Pauses for manual approval before production deployment |
+| Deploy production | Deploys the exact same release image with the production Compose file |
+| Production smoke tests | Verifies `/health` and `/metrics` on port `5002` |
 
 The Docker images created by Jenkins use these tags:
 
 ~~~text
 system-health-dashboard:build-<BUILD_NUMBER>
-system-health-dashboard:<BUILD_NUMBER>
+system-health-dashboard:release-<BUILD_NUMBER>
+system-health-dashboard:staging-current
+system-health-dashboard:production-current
 ~~~
 
 The Jenkins health-check container uses:
@@ -144,11 +152,11 @@ The pipeline removes the temporary Jenkins container after every run.
 
 The second project extends this application with Continuous Delivery and monitoring. The planned work is:
 
-- [ ] Add Prometheus metrics, structured JSON logging, and guarded fault injection.
-- [ ] Build the Prometheus, Grafana, Loki, and Promtail monitoring stack.
-- [ ] Create a provisioned Grafana dashboard for metrics and logs.
-- [ ] Define service-down and high-error-rate alert rules.
-- [ ] Extend Jenkins to deploy to staging, require production approval, run smoke tests, and roll back on failure.
+- [x] Add Prometheus metrics, structured JSON logging, and guarded fault injection.
+- [x] Build the Prometheus, Grafana, Loki, and Promtail monitoring stack.
+- [x] Create a provisioned Grafana dashboard for metrics and logs.
+- [x] Define service-down and high-error-rate alert rules.
+- [x] Extend Jenkins to deploy to staging, require production approval, run smoke tests, and roll back on failure.
 - [ ] Complete an incident drill and record the evidence in `INCIDENT.md`.
 - [ ] Complete the README, screenshots, and individual reflection.
 
