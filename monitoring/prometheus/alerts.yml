@@ -1,0 +1,24 @@
+# Alert rules for the System Health application environments.
+# Prometheus evaluates these rules every evaluation_interval from prometheus.yml.
+groups:
+  - name: system-health-alerts
+    rules:
+      - alert: SystemHealthServiceDown
+        expr: up{job="system-health"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "System Health service is down"
+          description: "The {{ $labels.environment }} service at {{ $labels.instance }} has been unavailable for more than one minute."
+
+      - alert: SystemHealthHighErrorRate
+        expr: |
+          100 * sum by (environment) (rate(http_requests_total{job="system-health",status=~"5.."}[5m]))
+            / sum by (environment) (rate(http_requests_total{job="system-health"}[5m])) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "System Health 5xx error rate is high"
+          description: "The {{ $labels.environment }} service has returned more than 5% HTTP 5xx responses for the last two minutes."

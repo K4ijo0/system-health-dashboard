@@ -1,0 +1,18 @@
+# Grafana provisions these data sources automatically on startup.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus # Stable UID referenced by the provisioned dashboard.
+    access: proxy # Grafana requests Prometheus from inside the Docker network.
+    url: http://prometheus:9090 # Compose service name, not localhost.
+    isDefault: true # Use Prometheus for metric panels unless overridden.
+    editable: false # Keep the provisioned connection reproducible.
+
+  - name: Loki
+    type: loki
+    uid: loki # Stable UID referenced by the provisioned dashboard.
+    access: proxy
+    url: http://loki:3100 # Compose service name, not localhost.
+    editable: false

@@ -1,0 +1,27 @@
+# Single-node Loki configuration for the local monitoring stack.
+# Filesystem storage keeps this setup simple; the named volume persists data.
+auth_enabled: false
+
+server:
+  http_listen_port: 3100 # Must match the Compose port and Promtail client URL.
+
+common:
+  path_prefix: /loki # Root directory mounted from the loki_data volume.
+  replication_factor: 1 # This stack runs one Loki instance.
+  ring:
+    kvstore:
+      store: inmemory # No external key-value store is needed for one node.
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks # Compressed log chunks.
+      rules_directory: /loki/rules # Rule files, if alerting rules are added.
+
+schema_config:
+  configs:
+    - from: 2024-01-01 # Schema applies to data written from this date onward.
+      store: tsdb # TSDB index format used by current Loki versions.
+      object_store: filesystem # Store chunks on the local named volume.
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h # Create one index period per day.
