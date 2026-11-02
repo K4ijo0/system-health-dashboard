@@ -62,6 +62,12 @@ pipeline {
         }
 
         stage('Deploy staging') {
+            when {
+                anyOf {
+                    branch 'develop'
+                    branch 'main'
+                }
+            }
             steps {
                 script {
                     env.STAGING_DEPLOYED = 'true'
@@ -78,18 +84,31 @@ pipeline {
         }
 
         stage('Staging smoke tests') {
+            when {
+                anyOf {
+                    branch 'develop'
+                    branch 'main'
+                }
+            }
             steps {
-                bat 'powershell -NoProfile -Command "Start-Sleep 5; $health=Invoke-WebRequest -UseBasicParsing -Uri http://localhost:5001/health -ErrorAction Stop; if ($health.StatusCode -ne 200) { exit 1 }; $metrics=Invoke-WebRequest -UseBasicParsing -Uri http://localhost:5001/metrics -ErrorAction Stop; if ($metrics.StatusCode -ne 200) { exit 1 }"'
+                bat 'powershell -NoProfile -Command "Start-Sleep 5"'
+                bat '"C:\\Program Files\\Git\\bin\\bash.exe" scripts/smoke_test.sh http://localhost:5001'
             }
         }
 
         stage('Production approval') {
+            when {
+                branch 'main'
+            }
             steps {
                 input message: 'Staging smoke tests passed. Deploy this same image to production?', ok: 'Deploy to production'
             }
         }
 
         stage('Deploy production') {
+            when {
+                branch 'main'
+            }
             steps {
                 script {
                     env.PRODUCTION_DEPLOYED = 'true'
@@ -106,8 +125,12 @@ pipeline {
         }
 
         stage('Production smoke tests') {
+            when {
+                branch 'main'
+            }
             steps {
-                bat 'powershell -NoProfile -Command "Start-Sleep 5; $health=Invoke-WebRequest -UseBasicParsing -Uri http://localhost:5002/health -ErrorAction Stop; if ($health.StatusCode -ne 200) { exit 1 }; $metrics=Invoke-WebRequest -UseBasicParsing -Uri http://localhost:5002/metrics -ErrorAction Stop; if ($metrics.StatusCode -ne 200) { exit 1 }"'
+                bat 'powershell -NoProfile -Command "Start-Sleep 5"'
+                bat '"C:\\Program Files\\Git\\bin\\bash.exe" scripts/smoke_test.sh http://localhost:5002'
             }
         }
     }
@@ -120,24 +143,10 @@ pipeline {
             script {
                 // Restore the last known image after a failed deployment or smoke test.
                 if (env.PRODUCTION_DEPLOYED == 'true') {
-                    bat '''
-                        docker image inspect %IMAGE_NAME%:production-previous >NUL 2>&1
-                        if not errorlevel 1 (
-                            set "APP_IMAGE=%IMAGE_NAME%:production-previous"
-                            docker compose -f docker-compose.production.yml up -d --no-build --force-recreate
-                            docker tag %IMAGE_NAME%:production-previous %IMAGE_NAME%:production-current
-                        )
-                    '''
+                    bat '"C:\\Program Files\\Git\\bin\\bash.exe" scripts/rollback.sh production'
                 }
                 if (env.STAGING_DEPLOYED == 'true') {
-                    bat '''
-                        docker image inspect %IMAGE_NAME%:staging-previous >NUL 2>&1
-                        if not errorlevel 1 (
-                            set "APP_IMAGE=%IMAGE_NAME%:staging-previous"
-                            docker compose -f docker-compose.staging.yml up -d --no-build --force-recreate
-                            docker tag %IMAGE_NAME%:staging-previous %IMAGE_NAME%:staging-current
-                        )
-                    '''
+                    bat '"C:\\Program Files\\Git\\bin\\bash.exe" scripts/rollback.sh staging'
                 }
             }
         }
