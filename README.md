@@ -54,6 +54,9 @@ Run the complete test suite with one command:
 py -m pytest -q
 ~~~
 
+Jenkins also writes the results to `reports/junit.xml` and publishes them through
+the Jenkins JUnit test-results view.
+
 The tests cover the health, version, environment, metrics, and fault-injection endpoints.
 
 ## Verify the local API
