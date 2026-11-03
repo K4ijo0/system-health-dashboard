@@ -39,6 +39,17 @@ def test_metrics_endpoint_exposes_required_metrics():
     assert 'http_requests_total{endpoint="/health",method="GET",status="200"}' in metrics_text
 
 
+def test_favicon_requests_are_excluded_from_metrics():
+    with app.test_client() as client:
+        client.get("/favicon.ico")
+        response = client.get("/metrics")
+
+    metrics_text = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert 'endpoint="/favicon.ico"' not in metrics_text
+
+
 def test_simulate_error_respects_fault_injection_switch(monkeypatch):
     monkeypatch.delenv("ENABLE_FAULT_INJECTION", raising=False)
 

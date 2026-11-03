@@ -4,15 +4,21 @@ groups:
   - name: system-health-alerts
     rules:
       - alert: SystemHealthServiceDown
+        # Prometheus sets up=0 when it cannot scrape an application target.
+        # The alert remains pending until the target has been down for 1 minute.
         expr: up{job="system-health"} == 0
         for: 1m
         labels:
           severity: critical
         annotations:
+          # The summary is the short message shown in Prometheus/Grafana.
           summary: "System Health service is down"
+          # These labels identify which environment and target are affected.
           description: "The {{ $labels.environment }} service at {{ $labels.instance }} has been unavailable for more than one minute."
 
       - alert: SystemHealthHighErrorRate
+        # Compare the 5xx request rate with the total request rate per
+        # environment. The alert fires only after the rate exceeds 5% for 2m.
         expr: |
           100 * sum by (environment) (rate(http_requests_total{job="system-health",status=~"5.."}[5m]))
             / sum by (environment) (rate(http_requests_total{job="system-health"}[5m])) > 5
@@ -20,5 +26,6 @@ groups:
         labels:
           severity: warning
         annotations:
+          # Keep this summary short so it is easy to recognise in an alert list.
           summary: "System Health 5xx error rate is high"
           description: "The {{ $labels.environment }} service has returned more than 5% HTTP 5xx responses for the last two minutes."

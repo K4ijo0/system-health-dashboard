@@ -35,5 +35,11 @@ scrape_configs:
             method: method
             status: status
             environment: environment
+      # Browsers request /favicon.ico automatically. Keep the application
+      # stdout log for auditability, but do not store this noise in Loki for
+      # either staging or production.
+      - drop:
+          source: endpoint
+          expression: '^/favicon\.ico$'
       - labels:
           level: # Promote log severity to a Loki label for filtering.

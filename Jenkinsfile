@@ -206,11 +206,15 @@ pipeline {
         failure {
             script {
                 // Restore the last known image after a failed deployment or smoke test.
+                // Each deploy stage first moves its current tag to a previous tag.
+                // Only environments reached by this build are rolled back.
                 def rollbackFailed = false
                 if (env.PRODUCTION_DEPLOYED == 'true') {
+                    // Production is restored first because it is the higher-risk deployment.
                     rollbackFailed = bat(script: '"%GIT_BASH%" scripts/rollback.sh production', returnStatus: true) != 0
                 }
                 if (env.STAGING_DEPLOYED == 'true') {
+                    // Staging is then restored to keep both environments consistent.
                     rollbackFailed = (bat(script: '"%GIT_BASH%" scripts/rollback.sh staging', returnStatus: true) != 0) || rollbackFailed
                 }
                 if (rollbackFailed) {
