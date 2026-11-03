@@ -1,0 +1,12 @@
+# Dashboard provider: load JSON dashboards mounted by monitoring Compose.
+apiVersion: 1
+
+providers:
+  - name: System Health Dashboards
+    orgId: 1
+    folder: System Health # Group the project's dashboards in Grafana.
+    type: file
+    disableDeletion: false # Allow dashboards to be removed from the UI.
+    editable: true # Allow local experimentation after provisioning.
+    options:
+      path: /var/lib/grafana/dashboards # Read-only bind mount from the repo.

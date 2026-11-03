@@ -1,0 +1,25 @@
+# Staging application environment. The monitoring stack must be running first
+# because this file joins its externally-created Docker network.
+services:
+  app-staging:
+    build:
+      context: . # Build the application image from the repository root.
+    image: ${APP_IMAGE:-system-health-dashboard:local}
+    container_name: app-staging # Stable name used by monitoring discovery.
+    environment:
+      ENVIRONMENT: staging # Exposed by /environment and included in logs.
+      ENABLE_FAULT_INJECTION: ${ENABLE_FAULT_INJECTION:-false} # Off by default.
+    ports:
+      - "5001:5000" # Host port 5001 -> application port 5000.
+    labels:
+      environment: staging # Promtail copies this into the log labels.
+      app: system-health-dashboard
+    networks:
+      monitoring:
+        aliases:
+          - app-staging # Prometheus resolves this name on the shared network.
+
+networks:
+  monitoring:
+    external: true # Created by the monitoring Compose project.
+    name: system-health-network

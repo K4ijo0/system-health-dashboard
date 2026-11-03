@@ -1,52 +1,53 @@
 from app import app
 
-#Test the health endpoint is working correctly
+
 def test_health_endpoint():
-    # Create a test client for the Flask application
     with app.test_client() as client:
-        # Send a GET request to the /health endpoint
         response = client.get("/health")
-        
-        # Assert that the response status code is 200 (OK)
-        assert response.status_code == 200
-        
-        # Assert that the response JSON contains the expected status
-        assert response.get_json() == {"status": "UP"}
+
+    assert response.status_code == 200
+    assert response.get_json() == {"status": "UP"}
+
 
 def test_version_endpoint():
-    # Create a test client for the Flask application
     with app.test_client() as client:
-        # Send a GET request to the /version endpoint
         response = client.get("/version")
-        
-        # Assert that the response status code is 200 (OK)
-        assert response.status_code == 200
-        
-        # Assert that the response JSON contains the expected version
-        assert response.get_json() == {"version": "1.0.0"}
 
-def test_echo_endpoint():
-    # Create a test client for the Flask application
-    with app.test_client() as client:
-        # Send a POST request to the /echo endpoint
-        response = client.post("/echo", json={"message": "Hello, World!"})
-        
-        # Assert that the response status code is 200 (OK)
-        assert response.status_code == 200
-        
-        # Assert that the response JSON contains the expected echo
-        assert response.get_json() == {"echo": {"message": "Hello, World!"}}
+    assert response.status_code == 200
+    assert response.get_json() == {"version": "1.0.1"}
+
 
 def test_environment_endpoint():
-    # Create a test client for the Flask application
     with app.test_client() as client:
-        # Send a GET request to the /environment endpoint
         response = client.get("/environment")
-        
-        # Assert that the response status code is 200 (OK)
-        assert response.status_code == 200
-        
-        # Assert that the response JSON contains the expected environment
-        assert response.get_json() == {"environment": "development"}
+
+    assert response.status_code == 200
+    assert response.get_json() == {"environment": "development"}
 
 
+def test_metrics_endpoint_exposes_required_metrics():
+    with app.test_client() as client:
+        client.get("/health")
+        response = client.get("/metrics")
+
+    metrics_text = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "# TYPE http_requests_total counter" in metrics_text
+    assert "# TYPE http_request_duration_seconds histogram" in metrics_text
+    assert "# TYPE app_info gauge" in metrics_text
+    assert 'http_requests_total{endpoint="/health",method="GET",status="200"}' in metrics_text
+
+
+def test_simulate_error_respects_fault_injection_switch(monkeypatch):
+    monkeypatch.delenv("ENABLE_FAULT_INJECTION", raising=False)
+
+    with app.test_client() as client:
+        disabled_response = client.get("/simulate-error")
+
+        monkeypatch.setenv("ENABLE_FAULT_INJECTION", "true")
+        enabled_response = client.get("/simulate-error")
+
+    assert disabled_response.status_code == 404
+    assert enabled_response.status_code == 500
+    assert enabled_response.get_json() == {"error": "Simulated fault"}

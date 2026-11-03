@@ -4,7 +4,11 @@ pipeline {
     environment {
         IMAGE_NAME = 'system-health-dashboard'
         CONTAINER_NAME = 'system-health-dashboard-jenkins'
-        HOST_PORT = '5001'
+        // Keep the temporary image health check separate from the staging service on port 5001.
+        HOST_PORT = '5003'
+        GIT_BASH = 'C:/Program Files/Git/bin/bash.exe'
+        STAGING_DEPLOYED = 'false'
+        PRODUCTION_DEPLOYED = 'false'
     }
 
     options {
@@ -39,15 +43,149 @@ pipeline {
 
         stage('Tag') {
             steps {
-                bat 'docker tag %IMAGE_NAME%:build-%BUILD_NUMBER% %IMAGE_NAME%:%BUILD_NUMBER%'
+                // The release tag is the immutable image promoted through both environments.
+                bat 'docker tag %IMAGE_NAME%:build-%BUILD_NUMBER% %IMAGE_NAME%:release-%BUILD_NUMBER%'
             }
         }
 
-        stage('Health check') {
+        stage('Local health check') {
             steps {
                 bat 'docker rm -f %CONTAINER_NAME% >NUL 2>&1 || exit /b 0'
-                bat 'docker run -d --name %CONTAINER_NAME% -p %HOST_PORT%:5000 -e ENVIRONMENT=jenkins %IMAGE_NAME%:%BUILD_NUMBER%'
+                bat 'docker run -d --name %CONTAINER_NAME% -p %HOST_PORT%:5000 -e ENVIRONMENT=jenkins %IMAGE_NAME%:release-%BUILD_NUMBER%'
                 bat 'powershell -NoProfile -Command "Start-Sleep 5; $r=Invoke-WebRequest -UseBasicParsing -Uri http://localhost:%HOST_PORT%/health -ErrorAction Stop; if ($r.StatusCode -ne 200) { exit 1 }"'
+            }
+        }
+
+        stage('Prepare deployment network') {
+            steps {
+                // The application Compose files join this shared external network.
+                bat 'docker network inspect system-health-network >NUL 2>&1 || docker network create system-health-network'
+            }
+        }
+
+        stage('Deploy staging') {
+            when {
+                expression {
+                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst(/^origin\//, '')
+                    return branch in ['develop', 'main']
+                }
+            }
+            steps {
+                script {
+                    env.STAGING_DEPLOYED = 'true'
+                }
+                bat '''
+                    docker image inspect %IMAGE_NAME%:staging-current >NUL 2>&1
+                    if not errorlevel 1 docker tag %IMAGE_NAME%:staging-current %IMAGE_NAME%:staging-previous
+                    docker container inspect app-staging >NUL 2>&1
+                    if not errorlevel 1 docker rm -f app-staging >NUL 2>&1
+                    set "APP_IMAGE=%IMAGE_NAME%:release-%BUILD_NUMBER%"
+                    docker compose -f docker-compose.staging.yml up -d --no-build --force-recreate
+                    if errorlevel 1 exit /b 1
+                    docker tag %IMAGE_NAME%:release-%BUILD_NUMBER% %IMAGE_NAME%:staging-current
+                '''
+            }
+        }
+
+        stage('Staging smoke tests') {
+            when {
+                expression {
+                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst(/^origin\//, '')
+                    return branch in ['develop', 'main']
+                }
+            }
+            steps {
+                bat 'powershell -NoProfile -Command "Start-Sleep 5"'
+                bat '"%GIT_BASH%" scripts/smoke_test.sh http://localhost:5001'
+            }
+        }
+
+        stage('Verify monitoring') {
+            when {
+                expression {
+                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst(/^origin\//, '')
+                    return branch in ['develop', 'main']
+                }
+            }
+            steps {
+                bat '''
+                    for /L %%A in (1,1,6) do (
+                        powershell -NoProfile -Command "$query='up{job='+[char]34+'system-health'+[char]34+',environment='+[char]34+'staging'+[char]34+'}'; $uri='http://localhost:9090/api/v1/query?query='+[uri]::EscapeDataString($query); $response=Invoke-RestMethod -Uri $uri -ErrorAction Stop; if ($response.status -eq 'success' -and @($response.data.result).Count -gt 0 -and [int]$response.data.result[0].value[1] -eq 1) { exit 0 } else { exit 1 }"
+                        if not errorlevel 1 exit /b 0
+                        powershell -NoProfile -Command "Start-Sleep -Seconds 5"
+                    )
+                    echo Prometheus staging target is not UP after six attempts.
+                    exit /b 1
+                '''
+            }
+        }
+
+        stage('Production approval') {
+            when {
+                expression {
+                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst(/^origin\//, '')
+                    return branch == 'main'
+                }
+            }
+            steps {
+                input message: 'Staging smoke tests passed. Deploy this same image to production?', ok: 'Deploy to production'
+            }
+        }
+
+        stage('Deploy production') {
+            when {
+                expression {
+                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst(/^origin\//, '')
+                    return branch == 'main'
+                }
+            }
+            steps {
+                script {
+                    env.PRODUCTION_DEPLOYED = 'true'
+                }
+                bat '''
+                    docker image inspect %IMAGE_NAME%:production-current >NUL 2>&1
+                    if not errorlevel 1 docker tag %IMAGE_NAME%:production-current %IMAGE_NAME%:production-previous
+                    docker container inspect app-production >NUL 2>&1
+                    if not errorlevel 1 docker rm -f app-production >NUL 2>&1
+                    set "APP_IMAGE=%IMAGE_NAME%:release-%BUILD_NUMBER%"
+                    docker compose -f docker-compose.production.yml up -d --no-build --force-recreate
+                    if errorlevel 1 exit /b 1
+                    docker tag %IMAGE_NAME%:release-%BUILD_NUMBER% %IMAGE_NAME%:production-current
+                '''
+            }
+        }
+
+        stage('Production smoke tests') {
+            when {
+                expression {
+                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst(/^origin\//, '')
+                    return branch == 'main'
+                }
+            }
+            steps {
+                bat 'powershell -NoProfile -Command "Start-Sleep 5"'
+                bat '"%GIT_BASH%" scripts/smoke_test.sh http://localhost:5002'
+            }
+        }
+
+        stage('Verify production monitoring') {
+            when {
+                expression {
+                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst(/^origin\//, '')
+                    return branch == 'main'
+                }
+            }
+            steps {
+                bat '''
+                    for /L %%A in (1,1,6) do (
+                        powershell -NoProfile -Command "$query='up{job='+[char]34+'system-health'+[char]34+',environment='+[char]34+'production'+[char]34+'}'; $uri='http://localhost:9090/api/v1/query?query='+[uri]::EscapeDataString($query); $response=Invoke-RestMethod -Uri $uri -ErrorAction Stop; if ($response.status -eq 'success' -and @($response.data.result).Count -gt 0 -and [int]$response.data.result[0].value[1] -eq 1) { exit 0 } else { exit 1 }"
+                        if not errorlevel 1 exit /b 0
+                        powershell -NoProfile -Command "Start-Sleep -Seconds 5"
+                    )
+                    echo Prometheus production target is not UP after six attempts.
+                    exit /b 1
+                '''
             }
         }
     }
@@ -55,6 +193,21 @@ pipeline {
     post {
         always {
             bat 'docker rm -f %CONTAINER_NAME% >NUL 2>&1 || exit /b 0'
+        }
+        failure {
+            script {
+                // Restore the last known image after a failed deployment or smoke test.
+                def rollbackFailed = false
+                if (env.PRODUCTION_DEPLOYED == 'true') {
+                    rollbackFailed = bat(script: '"%GIT_BASH%" scripts/rollback.sh production', returnStatus: true) != 0
+                }
+                if (env.STAGING_DEPLOYED == 'true') {
+                    rollbackFailed = (bat(script: '"%GIT_BASH%" scripts/rollback.sh staging', returnStatus: true) != 0) || rollbackFailed
+                }
+                if (rollbackFailed) {
+                    error 'Automatic rollback failed; inspect the Jenkins console output.'
+                }
+            }
         }
     }
 }
