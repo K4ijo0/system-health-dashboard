@@ -108,7 +108,15 @@ pipeline {
                 }
             }
             steps {
-                bat 'powershell -NoProfile -Command "$uri=\'http://localhost:9090/api/v1/query?query=up%7Bjob%3D%22system-health%22%2Cenvironment%3D%22staging%22%7D\'; $response=Invoke-RestMethod -Uri $uri -ErrorAction Stop; if ($response.status -ne \'success\' -or @($response.data.result).Count -eq 0 -or [int]$response.data.result[0].value[1] -ne 1) { throw \'Prometheus staging target is not UP\' }; Write-Host \'Prometheus staging target is UP\'"'
+                bat '''
+                    for /L %%A in (1,1,6) do (
+                        powershell -NoProfile -Command "$query='up{job='+[char]34+'system-health'+[char]34+',environment='+[char]34+'staging'+[char]34+'}'; $uri='http://localhost:9090/api/v1/query?query='+[uri]::EscapeDataString($query); $response=Invoke-RestMethod -Uri $uri -ErrorAction Stop; if ($response.status -eq 'success' -and @($response.data.result).Count -gt 0 -and [int]$response.data.result[0].value[1] -eq 1) { exit 0 } else { exit 1 }"
+                        if not errorlevel 1 exit /b 0
+                        powershell -NoProfile -Command "Start-Sleep -Seconds 5"
+                    )
+                    echo Prometheus staging target is not UP after six attempts.
+                    exit /b 1
+                '''
             }
         }
 
@@ -169,7 +177,15 @@ pipeline {
                 }
             }
             steps {
-                bat 'powershell -NoProfile -Command "$uri=\'http://localhost:9090/api/v1/query?query=up%7Bjob%3D%22system-health%22%2Cenvironment%3D%22production%22%7D\'; $response=Invoke-RestMethod -Uri $uri -ErrorAction Stop; if ($response.status -ne \'success\' -or @($response.data.result).Count -eq 0 -or [int]$response.data.result[0].value[1] -ne 1) { throw \'Prometheus production target is not UP\' }; Write-Host \'Prometheus production target is UP\'"'
+                bat '''
+                    for /L %%A in (1,1,6) do (
+                        powershell -NoProfile -Command "$query='up{job='+[char]34+'system-health'+[char]34+',environment='+[char]34+'production'+[char]34+'}'; $uri='http://localhost:9090/api/v1/query?query='+[uri]::EscapeDataString($query); $response=Invoke-RestMethod -Uri $uri -ErrorAction Stop; if ($response.status -eq 'success' -and @($response.data.result).Count -gt 0 -and [int]$response.data.result[0].value[1] -eq 1) { exit 0 } else { exit 1 }"
+                        if not errorlevel 1 exit /b 0
+                        powershell -NoProfile -Command "Start-Sleep -Seconds 5"
+                    )
+                    echo Prometheus production target is not UP after six attempts.
+                    exit /b 1
+                '''
             }
         }
     }
