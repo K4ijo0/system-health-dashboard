@@ -72,12 +72,16 @@ def record_request(response):
     duration = time.perf_counter() - g.request_started_at
     status = str(response.status_code)
 
-    REQUEST_COUNT.labels(
-        method=request.method,
-        endpoint=endpoint,
-        status=status,
-    ).inc()
-    REQUEST_DURATION.labels(endpoint=endpoint).observe(duration)
+    # Browsers request /favicon.ico automatically. Keep the request in the
+    # structured application log, but exclude it from business metrics so it
+    # does not create noise in Grafana rate and latency panels.
+    if endpoint != "/favicon.ico":
+        REQUEST_COUNT.labels(
+            method=request.method,
+            endpoint=endpoint,
+            status=status,
+        ).inc()
+        REQUEST_DURATION.labels(endpoint=endpoint).observe(duration)
 
     log_entry = {
         "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),

@@ -54,6 +54,9 @@ Run the complete test suite with one command:
 py -m pytest -q
 ~~~
 
+Jenkins also writes the results to `reports/junit.xml` and publishes them through
+the Jenkins JUnit test-results view.
+
 The tests cover the health, version, environment, metrics, and fault-injection endpoints.
 
 ## Verify the local API
@@ -134,6 +137,13 @@ The `Jenkinsfile` defines a Windows Jenkins pipeline with these stages:
 | Verify production monitoring | Confirms the production Prometheus target is UP |
 | Rollback on failure | Restores the previous staging or production image tag |
 
+This pipeline implements Continuous Delivery: Jenkins automatically builds, tests,
+and deploys a release to staging, but a person must approve the production
+deployment. Continuous Deployment would remove that approval and deploy every
+validated change to production automatically. The single change needed to move
+to Continuous Deployment is removing the Jenkins `input` approval step after
+the staging checks.
+
 The Docker images created by Jenkins use these tags:
 
 ~~~text
@@ -151,6 +161,36 @@ http://localhost:5003/health
 
 The pipeline removes the temporary Jenkins container after every run.
 
+### Roll back a deployment
+
+Jenkins records the currently deployed image as `staging-current` or
+`production-current` before replacing it, and preserves that image as the
+corresponding `*-previous` tag. If a deployment or smoke test fails, the
+Jenkins `post { failure { ... } }` block automatically runs the rollback script
+for each environment that was deployed.
+
+The Jenkins rollback sequence is: build and test the new release, save the
+currently deployed tag as `*-previous`, deploy the new release, and run the
+smoke test. If deployment or a smoke test fails, Jenkins calls
+`scripts/rollback.sh` with the affected environment. The script checks that the
+previous image exists, starts it with the environment's Compose file using
+`APP_IMAGE`, recreates the container without rebuilding, and updates the
+`*-current` tag to the restored image. A rollback failure is reported as a
+Jenkins failure so the console output can be investigated.
+
+To perform a manual rollback from Git Bash, run the command for the affected
+environment from the repository root:
+
+~~~bash
+IMAGE_NAME=system-health-dashboard bash scripts/rollback.sh staging
+IMAGE_NAME=system-health-dashboard bash scripts/rollback.sh production
+~~~
+
+The script restores the previous image, recreates the Compose service, and
+updates the current image tag. Verify the recovery with the environment's
+`/health`, `/version`, and `/metrics` endpoints and then confirm the target is
+UP in Prometheus.
+
 ## Mini Project 2 plan
 
 The second project extends this application with Continuous Delivery and monitoring. The planned work is:
@@ -160,8 +200,9 @@ The second project extends this application with Continuous Delivery and monitor
 - [x] Create a provisioned Grafana dashboard for metrics and logs.
 - [x] Define service-down and high-error-rate alert rules.
 - [x] Extend Jenkins to deploy to staging, require production approval, run smoke tests, and roll back on failure.
-- [ ] Complete an incident drill and record the evidence in `INCIDENT.md`.
-- [ ] Complete the README, screenshots, and individual reflection.
+- [x] Complete an incident drill and record the evidence in `INCIDENT.md`.
+- [x] Complete the README and individual reflection.
+- [ ] Add and label the required submission screenshots.
 
 ### Mini Project 2 architecture
 
@@ -288,5 +329,12 @@ git push -u origin feature/my-change
 ~~~
 
 Open a pull request from the feature branch into `develop`. After integration and review, open the final pull request from `develop` into `main`.
+
+## AI assistance disclosure
+
+I used approved AI assistance to help plan, understand, develop, and troubleshoot
+parts of the Jenkins pipeline, Dockerfile, monitoring configuration, tests, and
+documentation. I reviewed the suggestions, tested the implementation, and
+verified that I understand every submitted file and command.
 
 

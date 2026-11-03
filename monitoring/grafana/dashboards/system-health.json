@@ -186,7 +186,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "100 * sum by (environment) (rate(http_requests_total{job=\"system-health\",environment=~\"$environment\",status=~\"5..\"}[5m])) / sum by (environment) (rate(http_requests_total{job=\"system-health\",environment=~\"$environment\"}[5m]))",
+          "expr": "100 * sum by (environment) (rate(http_requests_total{job=\"system-health\",environment=~\"$environment\",endpoint!=\"/favicon.ico\",status=~\"5..\"}[5m])) / sum by (environment) (rate(http_requests_total{job=\"system-health\",environment=~\"$environment\",endpoint!=\"/favicon.ico\"}[5m]))",
           "legendFormat": "{{environment}}",
           "range": true,
           "refId": "A"
@@ -231,7 +231,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (environment, endpoint) (rate(http_requests_total{job=\"system-health\",environment=~\"$environment\"}[1m]))",
+          "expr": "sum by (environment, endpoint) (rate(http_requests_total{job=\"system-health\",environment=~\"$environment\",endpoint!=\"/favicon.ico\"}[1m]))",
           "legendFormat": "{{environment}} {{endpoint}}",
           "range": true,
           "refId": "A"
@@ -276,7 +276,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (environment, endpoint, le) (rate(http_request_duration_seconds_bucket{job=\"system-health\",environment=~\"$environment\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (environment, endpoint, le) (rate(http_request_duration_seconds_bucket{job=\"system-health\",environment=~\"$environment\",endpoint!=\"/favicon.ico\"}[5m])))",
           "legendFormat": "{{environment}} {{endpoint}}",
           "range": true,
           "refId": "A"
