@@ -126,10 +126,13 @@ The `Jenkinsfile` defines a Windows Jenkins pipeline with these stages:
 | Local health check | Starts the release image and verifies `/health` on port `5001` |
 | Prepare deployment network | Ensures the shared Docker network exists on the Jenkins agent |
 | Deploy staging | Deploys the release image with the staging Compose file |
-| Staging smoke tests | Verifies `/health` and `/metrics` on port `5001` |
+| Staging smoke tests | Verifies `/health`, `/version`, and `/metrics` on port `5001` |
+| Verify monitoring | Confirms the staging Prometheus target is UP |
 | Production approval | Pauses for manual approval before production deployment |
 | Deploy production | Deploys the exact same release image with the production Compose file |
-| Production smoke tests | Verifies `/health` and `/metrics` on port `5002` |
+| Production smoke tests | Verifies `/health`, `/version`, and `/metrics` on port `5002` |
+| Verify production monitoring | Confirms the production Prometheus target is UP |
+| Rollback on failure | Restores the previous staging or production image tag |
 
 The Docker images created by Jenkins use these tags:
 
@@ -246,13 +249,13 @@ The staff-provided Jenkins, Grafana, and Prometheus URLs are shared lab services
 
 ### Jenkins job setup
 
-1. Create a Jenkins Pipeline job.
+1. Create a Jenkins Multibranch Pipeline job, or create separate Pipeline jobs for `develop` and `main`.
 2. Select **Pipeline script from SCM**.
 3. Select **Git** and enter the repository URL.
 4. Select the required GitHub credential if the repository requires authentication.
-5. Set the branch specifier to `*/develop`.
+5. Configure branch discovery so Jenkins builds both `develop` and `main`.
 6. Set the script path to `Jenkinsfile`.
-7. Run **Build Now** and review the console output.
+7. Run a `develop` build to demonstrate automatic staging delivery, then run a `main` build to demonstrate the production approval gate.
 
 The Jenkins service must be able to access Git, Python, Docker Desktop, and Docker Buildx. On the Windows setup used for this project, the Jenkins service also needs the Docker configuration path:
 
