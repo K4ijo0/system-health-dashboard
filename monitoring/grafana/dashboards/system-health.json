@@ -19,159 +19,26 @@
   "graphTooltip": 1,
   "panels": [
     {
-      "id": 1,
-      "title": "Service status",
-      "description": "Shows whether the selected application environment is up.",
-      "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
       "gridPos": {
-        "h": 6,
-        "w": 6,
+        "h": 8,
+        "w": 12,
         "x": 0,
         "y": 0
       },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "red",
-                  "text": "DOWN"
-                },
-                "1": {
-                  "color": "green",
-                  "text": "UP"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "value_and_name"
-      },
-      "targets": [
-        {
-          "editorMode": "code",
-          "expr": "up{job=\"system-health\",environment=~\"$environment\"}",
-          "legendFormat": "{{environment}}",
-          "range": true,
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 2,
-      "title": "Application info",
-      "description": "Running application version and environment.",
-      "type": "table",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 6,
-        "x": 6,
-        "y": 0
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true
-      },
-      "targets": [
-        {
-          "editorMode": "code",
-          "expr": "app_info{job=\"system-health\",environment=~\"$environment\"}",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "{{environment}}",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 3,
-      "title": "5xx error rate",
-      "description": "Percentage of responses returning HTTP 5xx status codes.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 12,
-        "y": 0
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "unit": "percent",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 5
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
+      "id": 1,
       "options": {
         "legend": {
           "displayMode": "list",
@@ -186,72 +53,19 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "100 * sum by (environment) (rate(http_requests_total{job=\"system-health\",environment=~\"$environment\",status=~\"5..\"}[5m])) / sum by (environment) (rate(http_requests_total{job=\"system-health\",environment=~\"$environment\"}[5m]))",
-          "legendFormat": "{{environment}}",
+          "expr": "sum(rate(http_requests_total[5m]))",
+          "legendFormat": "requests/sec",
           "range": true,
           "refId": "A"
         }
-      ]
+      ],
+      "title": "Request rate",
+      "type": "timeseries"
     },
     {
-      "id": 4,
-      "title": "Request rate by endpoint",
-      "description": "Requests per second grouped by environment and endpoint.",
-      "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 6
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "reqps"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "editorMode": "code",
-          "expr": "sum by (environment, endpoint) (rate(http_requests_total{job=\"system-health\",environment=~\"$environment\"}[1m]))",
-          "legendFormat": "{{environment}} {{endpoint}}",
-          "range": true,
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 5,
-      "title": "Latency p95 by endpoint",
-      "description": "95th percentile request latency by environment and endpoint.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 6
       },
       "fieldConfig": {
         "defaults": {
@@ -262,6 +76,117 @@
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum(rate(http_request_duration_seconds_sum[5m])) / sum(rate(http_request_duration_seconds_count[5m]))",
+          "legendFormat": "average latency",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Average request latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "100 * sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))",
+          "legendFormat": "5xx error rate",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "5xx error rate",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 18,
+        "x": 6,
+        "y": 8
+      },
+      "id": 4,
       "options": {
         "legend": {
           "displayMode": "table",
@@ -276,70 +201,75 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (environment, endpoint, le) (rate(http_request_duration_seconds_bucket{job=\"system-health\",environment=~\"$environment\"}[5m])))",
-          "legendFormat": "{{environment}} {{endpoint}}",
+          "expr": "sum by (status) (rate(http_requests_total[5m]))",
+          "legendFormat": "HTTP {{status}}",
           "range": true,
           "refId": "A"
         }
-      ]
+      ],
+      "title": "Requests by status code",
+      "type": "timeseries"
     },
     {
-      "id": 6,
-      "title": "Application logs",
-      "description": "Recent structured application logs for the selected environment.",
-      "type": "logs",
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
       },
       "gridPos": {
-        "h": 10,
+        "h": 8,
         "w": 12,
         "x": 0,
-        "y": 14
+        "y": 16
       },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
+      "id": 5,
       "options": {
-        "deduplication": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": true,
-        "showCommonLabels": false,
-        "showLabels": true,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLines": false
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
           "editorMode": "code",
-          "expr": "{app=\"system-health-dashboard\",environment=~\"$environment\"} | json",
-          "queryType": "range",
+          "expr": "sum by (endpoint) (rate(http_requests_total[5m]))",
+          "legendFormat": "{{endpoint}}",
+          "range": true,
           "refId": "A"
         }
-      ]
+      ],
+      "title": "Requests by endpoint",
+      "type": "timeseries"
     },
     {
-      "id": 7,
-      "title": "Error logs",
-      "description": "Only ERROR-level application log entries for the selected environment.",
-      "type": "logs",
       "datasource": {
         "type": "loki",
         "uid": "loki"
       },
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 14
-      },
       "fieldConfig": {
         "defaults": {},
         "overrides": []
       },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 6,
       "options": {
         "deduplication": "none",
         "enableLogDetails": true,
@@ -353,11 +283,13 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "{app=\"system-health-dashboard\",environment=~\"$environment\"} | json | level=\"ERROR\"",
+          "expr": "{app=\"system-health-dashboard\"} | json",
           "queryType": "range",
           "refId": "A"
         }
-      ]
+      ],
+      "title": "Application logs",
+      "type": "logs"
     }
   ],
   "refresh": "15s",
@@ -367,33 +299,7 @@
     "application"
   ],
   "templating": {
-    "list": [
-      {
-        "allValue": ".*",
-        "current": {
-          "selected": true,
-          "text": "All",
-          "value": [
-            "$__all"
-          ]
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "definition": "label_values(up{job=\"system-health\"}, environment)",
-        "includeAll": true,
-        "label": "Environment",
-        "multi": true,
-        "name": "environment",
-        "options": [],
-        "query": "label_values(up{job=\"system-health\"}, environment)",
-        "refresh": 1,
-        "skipUrlSync": false,
-        "sort": 1,
-        "type": "query"
-      }
-    ]
+    "list": []
   },
   "time": {
     "from": "now-6h",
@@ -403,5 +309,5 @@
   "timezone": "browser",
   "title": "System Health Overview",
   "uid": "system-health-overview",
-  "version": 2
+  "version": 1
 }
