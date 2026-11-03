@@ -315,7 +315,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "{app=\"system-health-dashboard\",environment=~\"$environment\"} | json",
+          "expr": "{app=\"system-health-dashboard\",environment=~\"$environment\"} | json | endpoint != \"/favicon.ico\"",
           "queryType": "range",
           "refId": "A"
         }
