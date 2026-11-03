@@ -76,6 +76,8 @@ pipeline {
                 bat '''
                     docker image inspect %IMAGE_NAME%:staging-current >NUL 2>&1
                     if not errorlevel 1 docker tag %IMAGE_NAME%:staging-current %IMAGE_NAME%:staging-previous
+                    docker container inspect app-staging >NUL 2>&1
+                    if not errorlevel 1 docker rm -f app-staging >NUL 2>&1
                     set "APP_IMAGE=%IMAGE_NAME%:release-%BUILD_NUMBER%"
                     docker compose -f docker-compose.staging.yml up -d --no-build --force-recreate
                     if errorlevel 1 exit /b 1
@@ -135,6 +137,8 @@ pipeline {
                 bat '''
                     docker image inspect %IMAGE_NAME%:production-current >NUL 2>&1
                     if not errorlevel 1 docker tag %IMAGE_NAME%:production-current %IMAGE_NAME%:production-previous
+                    docker container inspect app-production >NUL 2>&1
+                    if not errorlevel 1 docker rm -f app-production >NUL 2>&1
                     set "APP_IMAGE=%IMAGE_NAME%:release-%BUILD_NUMBER%"
                     docker compose -f docker-compose.production.yml up -d --no-build --force-recreate
                     if errorlevel 1 exit /b 1
