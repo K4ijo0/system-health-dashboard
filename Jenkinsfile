@@ -62,6 +62,12 @@ pipeline {
         }
 
         stage('Deploy staging') {
+            when {
+                expression {
+                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst(/^origin\//, '')
+                    return branch in ['develop', 'main']
+                }
+            }
             steps {
                 script {
                     env.STAGING_DEPLOYED = 'true'
@@ -78,18 +84,49 @@ pipeline {
         }
 
         stage('Staging smoke tests') {
+            when {
+                expression {
+                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst(/^origin\//, '')
+                    return branch in ['develop', 'main']
+                }
+            }
             steps {
-                bat 'powershell -NoProfile -Command "Start-Sleep 5; $health=Invoke-WebRequest -UseBasicParsing -Uri http://localhost:5001/health -ErrorAction Stop; if ($health.StatusCode -ne 200) { exit 1 }; $metrics=Invoke-WebRequest -UseBasicParsing -Uri http://localhost:5001/metrics -ErrorAction Stop; if ($metrics.StatusCode -ne 200) { exit 1 }"'
+                bat 'powershell -NoProfile -Command "Start-Sleep 5"'
+                bat 'bash scripts/smoke_test.sh http://localhost:5001'
+            }
+        }
+
+        stage('Verify monitoring') {
+            when {
+                expression {
+                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst(/^origin\//, '')
+                    return branch in ['develop', 'main']
+                }
+            }
+            steps {
+                bat 'powershell -NoProfile -Command "$uri=\'http://localhost:9090/api/v1/query?query=up%7Bjob%3D%22system-health%22%2Cenvironment%3D%22staging%22%7D\'; $response=Invoke-RestMethod -Uri $uri -ErrorAction Stop; if ($response.status -ne \'success\' -or @($response.data.result).Count -eq 0 -or [int]$response.data.result[0].value[1] -ne 1) { throw \'Prometheus staging target is not UP\' }; Write-Host \'Prometheus staging target is UP\'"'
             }
         }
 
         stage('Production approval') {
+            when {
+                expression {
+                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst(/^origin\//, '')
+                    return branch == 'main'
+                }
+            }
             steps {
                 input message: 'Staging smoke tests passed. Deploy this same image to production?', ok: 'Deploy to production'
             }
         }
 
         stage('Deploy production') {
+            when {
+                expression {
+                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst(/^origin\//, '')
+                    return branch == 'main'
+                }
+            }
             steps {
                 script {
                     env.PRODUCTION_DEPLOYED = 'true'
@@ -106,8 +143,27 @@ pipeline {
         }
 
         stage('Production smoke tests') {
+            when {
+                expression {
+                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst(/^origin\//, '')
+                    return branch == 'main'
+                }
+            }
             steps {
-                bat 'powershell -NoProfile -Command "Start-Sleep 5; $health=Invoke-WebRequest -UseBasicParsing -Uri http://localhost:5002/health -ErrorAction Stop; if ($health.StatusCode -ne 200) { exit 1 }; $metrics=Invoke-WebRequest -UseBasicParsing -Uri http://localhost:5002/metrics -ErrorAction Stop; if ($metrics.StatusCode -ne 200) { exit 1 }"'
+                bat 'powershell -NoProfile -Command "Start-Sleep 5"'
+                bat 'bash scripts/smoke_test.sh http://localhost:5002'
+            }
+        }
+
+        stage('Verify production monitoring') {
+            when {
+                expression {
+                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst(/^origin\//, '')
+                    return branch == 'main'
+                }
+            }
+            steps {
+                bat 'powershell -NoProfile -Command "$uri=\'http://localhost:9090/api/v1/query?query=up%7Bjob%3D%22system-health%22%2Cenvironment%3D%22production%22%7D\'; $response=Invoke-RestMethod -Uri $uri -ErrorAction Stop; if ($response.status -ne \'success\' -or @($response.data.result).Count -eq 0 -or [int]$response.data.result[0].value[1] -ne 1) { throw \'Prometheus production target is not UP\' }; Write-Host \'Prometheus production target is UP\'"'
             }
         }
     }
@@ -119,25 +175,15 @@ pipeline {
         failure {
             script {
                 // Restore the last known image after a failed deployment or smoke test.
+                def rollbackFailed = false
                 if (env.PRODUCTION_DEPLOYED == 'true') {
-                    bat '''
-                        docker image inspect %IMAGE_NAME%:production-previous >NUL 2>&1
-                        if not errorlevel 1 (
-                            set "APP_IMAGE=%IMAGE_NAME%:production-previous"
-                            docker compose -f docker-compose.production.yml up -d --no-build --force-recreate
-                            docker tag %IMAGE_NAME%:production-previous %IMAGE_NAME%:production-current
-                        )
-                    '''
+                    rollbackFailed = bat(script: 'bash scripts/rollback.sh production', returnStatus: true) != 0
                 }
                 if (env.STAGING_DEPLOYED == 'true') {
-                    bat '''
-                        docker image inspect %IMAGE_NAME%:staging-previous >NUL 2>&1
-                        if not errorlevel 1 (
-                            set "APP_IMAGE=%IMAGE_NAME%:staging-previous"
-                            docker compose -f docker-compose.staging.yml up -d --no-build --force-recreate
-                            docker tag %IMAGE_NAME%:staging-previous %IMAGE_NAME%:staging-current
-                        )
-                    '''
+                    rollbackFailed = (bat(script: 'bash scripts/rollback.sh staging', returnStatus: true) != 0) || rollbackFailed
+                }
+                if (rollbackFailed) {
+                    error 'Automatic rollback failed; inspect the Jenkins console output.'
                 }
             }
         }
