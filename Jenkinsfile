@@ -4,7 +4,8 @@ pipeline {
     environment {
         IMAGE_NAME = 'system-health-dashboard'
         CONTAINER_NAME = 'system-health-dashboard-jenkins'
-        HOST_PORT = '5001'
+        // Keep the temporary image health check separate from the staging service on port 5001.
+        HOST_PORT = '5003'
         STAGING_DEPLOYED = 'false'
         PRODUCTION_DEPLOYED = 'false'
     }

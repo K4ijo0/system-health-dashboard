@@ -146,7 +146,7 @@ system-health-dashboard:production-current
 The Jenkins health-check container uses:
 
 ~~~text
-http://localhost:5001/health
+http://localhost:5003/health
 ~~~
 
 The pipeline removes the temporary Jenkins container after every run.
