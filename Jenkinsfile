@@ -6,6 +6,7 @@ pipeline {
         CONTAINER_NAME = 'system-health-dashboard-jenkins'
         // Keep the temporary image health check separate from the staging service on port 5001.
         HOST_PORT = '5003'
+        GIT_BASH = 'C:/Program Files/Git/bin/bash.exe'
         STAGING_DEPLOYED = 'false'
         PRODUCTION_DEPLOYED = 'false'
     }
@@ -95,7 +96,7 @@ pipeline {
             }
             steps {
                 bat 'powershell -NoProfile -Command "Start-Sleep 5"'
-                bat 'bash scripts/smoke_test.sh http://localhost:5001'
+                bat '"%GIT_BASH%" scripts/smoke_test.sh http://localhost:5001'
             }
         }
 
@@ -156,7 +157,7 @@ pipeline {
             }
             steps {
                 bat 'powershell -NoProfile -Command "Start-Sleep 5"'
-                bat 'bash scripts/smoke_test.sh http://localhost:5002'
+                bat '"%GIT_BASH%" scripts/smoke_test.sh http://localhost:5002'
             }
         }
 
@@ -182,10 +183,10 @@ pipeline {
                 // Restore the last known image after a failed deployment or smoke test.
                 def rollbackFailed = false
                 if (env.PRODUCTION_DEPLOYED == 'true') {
-                    rollbackFailed = bat(script: 'bash scripts/rollback.sh production', returnStatus: true) != 0
+                    rollbackFailed = bat(script: '"%GIT_BASH%" scripts/rollback.sh production', returnStatus: true) != 0
                 }
                 if (env.STAGING_DEPLOYED == 'true') {
-                    rollbackFailed = (bat(script: 'bash scripts/rollback.sh staging', returnStatus: true) != 0) || rollbackFailed
+                    rollbackFailed = (bat(script: '"%GIT_BASH%" scripts/rollback.sh staging', returnStatus: true) != 0) || rollbackFailed
                 }
                 if (rollbackFailed) {
                     error 'Automatic rollback failed; inspect the Jenkins console output.'
