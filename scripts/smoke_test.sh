@@ -19,5 +19,11 @@ curl --fail --silent --show-error "${BASE_URL}/version" > /dev/null
 echo "Checking ${BASE_URL}/metrics"
 curl --fail --silent --show-error "${BASE_URL}/metrics" > /dev/null
 
+# TEMPORARY DEMO FAILURE - remove after the rollback presentation.
+if [[ "$BASE_URL" == "http://localhost:5001" ]]; then
+  echo "Intentional staging smoke-test failure for rollback demonstration" >&2
+  exit 1
+fi
+
 # Reaching this line means every smoke check returned a successful response.
 echo "Smoke test passed for ${BASE_URL}"
