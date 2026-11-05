@@ -1,3 +1,6 @@
+def stagingDeployed = false
+def productionDeployed = false
+
 pipeline {
     agent any
 
@@ -7,8 +10,6 @@ pipeline {
         // Keep the temporary image health check separate from the staging service on port 5001.
         HOST_PORT = '5003'
         GIT_BASH = 'C:/Program Files/Git/bin/bash.exe'
-        STAGING_DEPLOYED = 'false'
-        PRODUCTION_DEPLOYED = 'false'
     }
 
     options {
@@ -81,7 +82,7 @@ pipeline {
             }
             steps {
                 script {
-                    env.STAGING_DEPLOYED = 'true'
+                    stagingDeployed = true
                 }
                 bat '''
                     docker image inspect %IMAGE_NAME%:staging-current >NUL 2>&1
@@ -150,7 +151,7 @@ pipeline {
             }
             steps {
                 script {
-                    env.PRODUCTION_DEPLOYED = 'true'
+                    productionDeployed = true
                 }
                 bat '''
                     docker image inspect %IMAGE_NAME%:production-current >NUL 2>&1
@@ -209,11 +210,11 @@ pipeline {
                 // Each deploy stage first moves its current tag to a previous tag.
                 // Only environments reached by this build are rolled back.
                 def rollbackFailed = false
-                if (env.PRODUCTION_DEPLOYED == 'true') {
+                if (productionDeployed) {
                     // Production is restored first because it is the higher-risk deployment.
                     rollbackFailed = bat(script: '"%GIT_BASH%" scripts/rollback.sh production', returnStatus: true) != 0
                 }
-                if (env.STAGING_DEPLOYED == 'true') {
+                if (stagingDeployed) {
                     // Staging is then restored to keep both environments consistent.
                     rollbackFailed = (bat(script: '"%GIT_BASH%" scripts/rollback.sh staging', returnStatus: true) != 0) || rollbackFailed
                 }
